@@ -2,41 +2,40 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
-# Configuración básica
 st.set_page_config(page_title="Dashboard Planta", layout="wide")
 
-# Animación CSS
+# CSS para animaciones
 st.markdown("""
 <style>
-    .fade-in { animation: fadeInAnimation 0.5s ease-in-out; }
+    .fade-in { animation: fadeInAnimation 0.8s ease-in-out; }
     @keyframes fadeInAnimation { from { opacity: 0; } to { opacity: 1; } }
 </style>
 """, unsafe_allow_html=True)
 
-# 1. CARGA DE DATOS (Lee el archivo datos.csv directamente)
+# 1. CARGA DE DATOS CON ENCODING CORREGIDO
 @st.cache_data
-def load_data():
-    # header=1 salta la primera fila de etiquetas generales y toma la segunda como columnas
-    df = pd.read_csv("datos.csv", header=1)
+def load_csv_data():
+    # Agregamos encoding='latin-1' para soportar los caracteres especiales de tu archivo
+    df = pd.read_csv("datos.csv", header=1, encoding='latin-1')
     
-    # Normalizamos nombres de columnas para que no haya ambigüedades
-    # El archivo tiene: Area, Codigo, 2024, 2025, 2025(Dic), 2026...
-    # Ajustamos para tener nombres limpios: Area, Codigo, Alerta_24, Alerta_25...
-    # Esta parte asume el orden exacto de tu CSV
+    # Mapeo de columnas
     new_cols = ["Area", "Codigo", "Alerta_24", "Alerta_25", "Alerta_25Dic", "Alerta_26", 
                 "C_Accion", "Accion_24", "Accion_25", "Accion_25Dic", "Accion_26", 
                 "RFE_24", "RFE_25", "RFE_25Dic", "RFE_26"]
+    
+    # Ajustamos por si el CSV tiene más o menos columnas
+    df = df.iloc[:, :len(new_cols)]
     df.columns = new_cols
     
-    df["Area"] = df["Area"].ffill() # Llena las celdas vacías del área
-    # Creamos el código base para agrupar (tomando el texto antes del primer salto de línea o espacio)
-    df["Base"] = df["Codigo"].astype(str).str.split('\n').str[0].str.split(' ').str[0]
+    df["Area"] = df["Area"].ffill()
+    # Limpiamos y creamos el código base
+    df["Codigo"] = df["Codigo"].astype(str).str.replace("\n", " ").str.strip()
+    df["Base"] = df["Codigo"].apply(lambda x: str(x).split(" Muestreo")[0])
     return df
 
-# Carga de datos con control de errores simple
 try:
     if 'df' not in st.session_state:
-        st.session_state.df = load_data()
+        st.session_state.df = load_csv_data()
 except Exception as e:
     st.error(f"Error al leer datos.csv: {e}")
     st.stop()
@@ -56,10 +55,10 @@ st.title(f"Dashboard: {area}")
 df_f = st.session_state.df[st.session_state.df["Area"] == area]
 if filtro_base != "TODOS": df_f = df_f[df_f["Base"] == filtro_base]
 
-# 4. Gráficas
+# 4. Gráficas Agrupadas
 for base in df_f["Base"].unique():
-    subset = df_f[df_f["Base"] == base]
     fig = go.Figure()
+    subset = df_f[df_f["Base"] == base]
     
     for _, row in subset.iterrows():
         y = [row[f"{metrica}_24"], row[f"{metrica}_25"], row[f"{metrica}_25Dic"], row[f"{metrica}_26"]]
@@ -78,7 +77,7 @@ for base in df_f["Base"].unique():
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# 5. Edición
-with st.expander("⚙️ Editar Datos"):
+# 5. Edición y Guardado
+with st.expander("💾 Editar y Guardar"):
     st.session_state.df = st.data_editor(st.session_state.df, use_container_width=True)
-    st.download_button("Descargar CSV", st.session_state.df.to_csv(index=False), "datos_planta.csv")
+    st.download_button("Descargar CSV Actualizado", st.session_state.df.to_csv(index=False), "datos_planta_v2.csv")
