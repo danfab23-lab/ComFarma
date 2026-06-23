@@ -2,83 +2,106 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
-# 1. Configuración de la página (Debe ser la primera línea)
+# 1. Configuración de la página
 st.set_page_config(page_title="Dashboard Sistema de Agua", layout="wide", initial_sidebar_state="expanded")
 
-# 2. Inyección de CSS personalizado para igualar el diseño de la imagen
+# 2. Inyección de CSS personalizado para la interfaz limpia
 st.markdown("""
 <style>
-    /* Fondo general más claro */
     .stApp { background-color: #F8F9FA; }
-    
-    /* Ocultar barra superior por defecto de Streamlit para más limpieza */
     header {visibility: hidden;}
-    
-    /* Estilo de las tarjetas KPI (Métricas superiores) */
     .kpi-card {
-        background-color: white;
-        border-radius: 15px;
-        padding: 20px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        text-align: center;
-        height: 100%;
-        border: 1px solid #E9ECEF;
+        background-color: white; border-radius: 15px; padding: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center;
+        height: 100%; border: 1px solid #E9ECEF;
     }
     .kpi-title { font-size: 0.85rem; color: #8B98A5; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
     .kpi-value { font-size: 2.8rem; color: #1E40AF; font-weight: 800; margin: 10px 0; line-height: 1; }
     .kpi-value-text { font-size: 1.8rem; color: #343A40; font-weight: 700; margin: 10px 0; line-height: 1.2; }
     .kpi-subtitle { font-size: 0.85rem; color: #8B98A5; font-style: italic; }
-    
-    /* Línea azul decorativa en la primera tarjeta */
     .blue-line { height: 4px; background-color: #1E40AF; width: 40px; border-radius: 2px; margin-top: 15px; }
-    
-    /* Punto verde de estado operativo */
     .status-dot { height: 12px; width: 12px; background-color: #10B981; border-radius: 50%; display: inline-block; margin-left: 10px; margin-bottom: 4px; }
-    
-    /* Ajustes del menú lateral */
     [data-testid="stSidebar"] { background-color: white; }
     .sidebar-title { font-size: 0.8rem; color: #8B98A5; font-weight: bold; padding-left: 10px; margin-top: 20px; margin-bottom: 10px;}
 </style>
 """, unsafe_allow_html=True)
 
-# 3. Base de Datos Inicial
+# 3. Base de Datos Inicial Precargada con Datos Históricos (Actualizada)
 @st.cache_data
 def load_initial_data():
-    puntos = [
-        {"No.": 1, "Tipo": "Agua potable", "Punto de Uso": "Cisterna", "Código": "C", "Área": "Cuarto de aguas"},
-        {"No.": 2, "Tipo": "Agua Pre-tratada", "Punto de Uso": "Filtro Dual Media", "Código": "2S", "Área": "Cuarto de aguas"},
-        {"No.": 3, "Tipo": "Agua Pre-tratada", "Punto de Uso": "Filtro suavisador", "Código": "3S", "Área": "Cuarto de aguas"},
-        {"No.": 4, "Tipo": "Agua Pre-tratada", "Punto de Uso": "Tanque de agua suavizada", "Código": "4S", "Área": "Cuarto de aguas"},
-        {"No.": 5, "Tipo": "Agua Pre-tratada", "Punto de Uso": "Osmosis Inversa", "Código": "5S", "Área": "Cuarto de aguas"},
-        {"No.": 8, "Tipo": "Agua Purificada", "Punto de Uso": "Cuarto de manufactura de líquidos #1", "Código": "PU-1L", "Área": "Líquidos"},
-        {"No.": 11, "Tipo": "Agua Purificada", "Punto de Uso": "Semisólidos 3", "Código": "PU-4L", "Área": "Semisólidos"},
-        {"No.": 12, "Tipo": "Agua Purificada", "Punto de Uso": "Semisólidos 2", "Código": "PU-5L", "Área": "Semisólidos"},
-        {"No.": 13, "Tipo": "Agua Purificada", "Punto de Uso": "Semisólidos 1", "Código": "PU-6L", "Área": "Semisólidos"},
-        {"No.": 20, "Tipo": "Agua Purificada", "Punto de Uso": "Zona de lavado Microbiología", "Código": "PU-13L", "Área": "Control de calidad"},
-        {"No.": 22, "Tipo": "Agua Purificada", "Punto de Uso": "Zona de lavado de Desarrollo", "Código": "PU-15L", "Área": "Desarrollo"},
-        {"No.": 24, "Tipo": "Agua Purificada", "Punto de Uso": "Cuarto de granulación 2", "Código": "PU-17L", "Área": "Sólidos"},
-        {"No.": 25, "Tipo": "Agua Purificada", "Punto de Uso": "Área Técnica de granulación", "Código": "PU-18L", "Área": "Sólidos"},
-        {"No.": 26, "Tipo": "Agua Purificada", "Punto de Uso": "Cuarto de granulación", "Código": "PU-19L", "Área": "Sólidos"},
-        {"No.": 27, "Tipo": "Agua Purificada", "Punto de Uso": "Cuarto de lavado sólidos", "Código": "PU-20L", "Área": "Sólidos"},
-        {"No.": 41, "Tipo": "Agua Inyectables", "Punto de Uso": "CGA-N1-01, salida termocompresor", "Código": "SV-201", "Área": "Inyectables"},
-        {"No.": 43, "Tipo": "Agua Inyectables", "Punto de Uso": "CGA-N1-01, salida intercambiador", "Código": "SV-203", "Área": "Inyectables"},
-        {"No.": 44, "Tipo": "Agua Inyectables", "Punto de Uso": "Lavado y despirogenizado", "Código": "SV-204", "Área": "Inyectables"},
-        {"No.": 46, "Tipo": "Agua Inyectables", "Punto de Uso": "Lavado de material Planta baja", "Código": "HV-207-AI", "Área": "Inyectables"},
-        {"No.": 48, "Tipo": "Agua Inyectables", "Punto de Uso": "Preparación de soluciones", "Código": "HV-208-AI", "Área": "Inyectables"},
-        {"No.": 52, "Tipo": "Vapor puro", "Punto de Uso": "Salida Generador de vapor", "Código": "1 VP", "Área": "Inyectables"},
-        {"No.": 53, "Tipo": "Vapor puro", "Punto de Uso": "Autoclave Högner", "Código": "2 VP", "Área": "Inyectables"},
-        {"No.": 54, "Tipo": "Vapor puro", "Punto de Uso": "Tanque de fabricación 500 L", "Código": "3 VP", "Área": "Inyectables"},
-        {"No.": 55, "Tipo": "Vapor puro", "Punto de Uso": "Autoclave Shinva", "Código": "4 VP", "Área": "Inyectables"}
+    # Estructura: (Area, Codigo, [Alerta 24, 25, 25Dic, 26], [Accion 24, 25, 25Dic, 26], [RFE 24, 25, 25Dic, 26])
+    datos_crudos = [
+        # Cuarto de aguas
+        ("Cuarto de aguas", "6S", [3,0,0,0], [1,0,0,0], [0,0,0,0]),
+        ("Cuarto de aguas", "7SS", [4,0,0,0], [2,1,0,0], [0,0,0,0]),
+        ("Cuarto de aguas", "SV-201", [3,0,0,0], [0,0,1,0], [0,0,0,0]),
+        ("Cuarto de aguas", "SV-202", [6,0,0,0], [1,0,0,0], [0,0,0,0]),
+        ("Cuarto de aguas", "SV-203", [16,0,0,0], [4,0,0,0], [1,0,0,0]),
+        ("Cuarto de aguas", "SV-205", [16,1,0,0], [9,0,0,0], [0,0,0,0]),
+        ("Cuarto de aguas", "HV-210", [16,5,0,0], [10,5,0,1], [3,1,0,0]),
+        # Sólidos
+        ("Sólidos", "PU-17L", [1,1,0,0], [3,1,0,0], [0,0,0,0]),
+        ("Sólidos", "PU-18L", [1,0,0,0], [1,0,0,0], [0,0,0,0]),
+        ("Sólidos", "PU-19L", [6,0,0,0], [2,1,0,0], [0,0,0,0]),
+        ("Sólidos", "PU-20L", [2,1,0,0], [4,0,0,0], [0,0,0,0]),
+        ("Sólidos", "PU-21L", [2,0,0,0], [0,0,0,0], [0,0,0,0]),
+        ("Sólidos", "PU-23L", [3,0,0,1], [2,0,1,0], [0,0,0,0]),
+        ("Sólidos", "PU-24L", [1,1,0,2], [8,1,1,0], [0,0,0,0]),
+        ("Sólidos", "PU-25L", [3,0,0,1], [0,0,0,0], [0,0,0,0]),
+        ("Sólidos", "PU-26L", [1,1,0,0], [2,0,0,0], [0,0,0,0]),
+        ("Sólidos", "PU-28L", [3,2,0,0], [2,3,0,0], [0,0,0,0]),
+        # Líquidos
+        ("Líquidos", "PU-1L", [3,0,0,0], [2,0,0,0], [0,0,0,0]),
+        ("Líquidos", "PU-2L", [4,1,0,0], [4,0,0,0], [0,0,0,0]),
+        ("Líquidos", "PU-3L", [5,0,0,1], [2,0,1,0], [0,0,0,0]),
+        ("Líquidos", "PU-22L", [3,4,0,1], [10,2,0,0], [0,0,0,0]),
+        ("Líquidos", "PU-34L", [1,2,0,0], [1,1,1,0], [0,0,0,0]),
+        ("Líquidos", "PU-35L", [0,0,0,0], [1,0,0,0], [0,0,0,0]),
+        # Semisólidos
+        ("Semisólidos", "PU-4L", [7,10,0,1], [8,6,0,2], [0,1,0,1]),
+        ("Semisólidos", "PU-5L", [5,2,0,3], [2,0,0,0], [0,0,0,1]),
+        ("Semisólidos", "PU-6L", [2,0,0,0], [0,0,0,0], [0,0,0,0]),
+        ("Semisólidos", "PU-7L", [3,0,0,1], [0,1,0,0], [0,0,0,0]),
+        ("Semisólidos", "PU-8L", [3,4,0,0], [4,2,0,0], [0,0,0,0]),
+        ("Semisólidos", "PU-9L", [11,2,0,0], [3,0,0,0], [0,0,0,0]),
+        ("Semisólidos", "PU-10L", [6,2,0,1], [5,2,1,0], [0,0,0,0]),
+        ("Semisólidos", "PU-33L", [5,0,0,1], [2,4,2,0], [0,2,0,1]),
+        # Inyectables
+        ("Inyectables", "SV-204", [4,0,0,0], [2,0,0,0], [0,0,0,0]),
+        ("Inyectables", "HV-207-AI M. Normal", [5,3,0,1], [4,5,0,1], [1,0,2,1]),
+        ("Inyectables", "HV-207-AI M. Valvula", [0,0,0,0], [0,0,0,0], [0,0,0,0]),
+        ("Inyectables", "HV-207-DI M. Normal", [10,1,0,0], [13,2,0,0], [9,0,0,0]),
+        ("Inyectables", "HV-207-DI M. Valvula", [0,0,0,0], [0,0,0,0], [0,0,0,0]),
+        ("Inyectables", "HV-208-AI M. Normal", [17,3,0,0], [10,1,0,1], [1,0,0,0]),
+        ("Inyectables", "HV-208-AI M. Valvula", [0,0,0,0], [0,0,0,0], [0,0,0,0]),
+        ("Inyectables", "HV-208-DI M. Normal", [6,0,0,0], [6,1,0,0], [4,0,0,0]),
+        ("Inyectables", "HV-208-DI M. Valvula", [0,0,0,0], [0,0,0,0], [0,0,0,0]),
+        ("Inyectables", "1 VP", [0,3,0,0], [3,0,0,0], [0,0,0,0]),
+        ("Inyectables", "2 VP", [5,4,0,0], [2,0,0,0], [0,0,0,0]),
+        ("Inyectables", "3 VP", [0,8,0,0], [1,2,0,0], [0,0,0,0]),
+        ("Inyectables", "4 VP", [2,7,0,0], [2,0,0,0], [1,0,0,0]),
+        # Externos a producción
+        ("Externos a producción", "PU-27L", [0,0,0,0], [1,0,0,0], [0,0,0,0]),
+        ("Externos a producción", "PU-13L", [2,0,0,1], [0,0,0,1], [0,0,0,0]),
+        ("Externos a producción", "PU-14L", [0,4,0,0], [3,0,0,0], [0,0,0,0]),
+        ("Externos a producción", "PU-15L", [2,1,0,0], [3,0,0,0], [0,0,0,0]),
+        ("Externos a producción", "PU-16L", [5,0,0,0], [0,0,0,0], [0,0,0,0]),
+        ("Externos a producción", "PU-11L", [0,0,0,0], [0,0,0,0], [0,0,0,0]),
+        ("Externos a producción", "PU-12L", [0,0,0,0], [0,0,0,0], [0,0,0,0]),
+        ("Externos a producción", "PU-30L", [0,0,0,0], [3,0,0,0], [0,0,0,0]),
+        ("Externos a producción", "PU-36L", [0,1,0,0], [1,0,0,0], [0,0,0,0])
     ]
-    df = pd.DataFrame(puntos)
-    metricas = ["Alerta", "Acción", "RFE"]
-    años = ["2024", "2025", "2025_Dic", "2026"]
-    for m in metricas:
-        for a in años:
-            df[f"{m}_{a}"] = 0
-    df["Mes_Revision_2026"] = "Enero"
-    df["Sin_Desviaciones"] = False
-    return df
+    
+    filas = []
+    for area, codigo, alerta, accion, rfe in datos_crudos:
+        filas.append({
+            "Área": area, "Código": codigo,
+            "Alerta_2024": alerta[0], "Alerta_2025": alerta[1], "Alerta_2025_Dic": alerta[2], "Alerta_2026": alerta[3],
+            "Acción_2024": accion[0], "Acción_2025": accion[1], "Acción_2025_Dic": accion[2], "Acción_2026": accion[3],
+            "RFE_2024": rfe[0], "RFE_2025": rfe[1], "RFE_2025_Dic": rfe[2], "RFE_2026": rfe[3],
+            "Mes_Revision_2026": "Enero", "Sin_Desviaciones": False
+        })
+    return pd.DataFrame(filas)
 
 if 'df_agua' not in st.session_state:
     st.session_state.df_agua = load_initial_data()
@@ -86,9 +109,8 @@ if 'df_agua' not in st.session_state:
 # 4. Navegación Lateral (Sidebar)
 with st.sidebar:
     st.markdown('<div class="sidebar-title">SECCIÓN</div>', unsafe_allow_html=True)
-    areas_list = sorted(st.session_state.df_agua["Área"].dropna().unique().tolist())
+    areas_list = ["Cuarto de aguas", "Sólidos", "Líquidos", "Semisólidos", "Inyectables", "Externos a producción"]
     areas_upper = [a.upper() for a in areas_list]
-    # Forzamos que "INYECTABLES" sea una opción destacada si existe
     default_index = areas_upper.index("INYECTABLES") if "INYECTABLES" in areas_upper else 0
     
     seccion_seleccionada = st.radio("Sección", areas_upper, index=default_index, label_visibility="collapsed")
@@ -104,7 +126,6 @@ with st.sidebar:
 
 # 5. Panel Principal - KPIs Superiores
 col1, col2, col3 = st.columns(3)
-
 cantidad_puntos = len(codigos_area) if punto_seleccionado == "ALL" else 1
 
 with col1:
@@ -133,21 +154,18 @@ with col3:
         </div>
     ''', unsafe_allow_html=True)
 
-st.write("") # Espaciador
+st.write("") 
 
 # 6. Grid de Gráficas Individuales
 df_filtrado = st.session_state.df_agua[st.session_state.df_agua["Área"] == area_real]
 if punto_seleccionado != "ALL":
     df_filtrado = df_filtrado[df_filtrado["Código"] == punto_seleccionado]
 
-# Creamos columnas para el grid (2 gráficas por fila)
 cols_por_fila = 2
 filas = [st.columns(cols_por_fila) for _ in range((len(df_filtrado) + cols_por_fila - 1) // cols_por_fila)]
 
 for i, (_, row) in enumerate(df_filtrado.iterrows()):
     col = filas[i // cols_por_fila][i % cols_por_fila]
-    
-    # Extraer datos
     codigo = row["Código"]
     mes = row["Mes_Revision_2026"]
     x_labels = ["2024", "2025", "2025(Dic)", f"2026({mes[:3]})"]
@@ -160,7 +178,6 @@ for i, (_, row) in enumerate(df_filtrado.iterrows()):
     valor_actual = y_vals[-1]
     
     with col:
-        # Contenedor estilo tarjeta para la gráfica
         with st.container():
             st.markdown(f"""
             <div style="background-color: white; border-radius: 15px; padding: 20px; border: 1px solid #E9ECEF; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 20px;">
@@ -168,10 +185,9 @@ for i, (_, row) in enumerate(df_filtrado.iterrows()):
                     <span style="font-size: 1.2rem; font-weight: bold; color: #1E293B;">{codigo}</span>
                     <span style="font-size: 0.7rem; font-weight: bold; color: #ADB5BD; cursor: pointer;">DETALLE</span>
                 </div>
-                <div style="font-size: 0.8rem; font-weight: bold; color: #1E40AF; margin-bottom: 15px;">NORMAL: {valor_actual}</div>
+                <div style="font-size: 0.8rem; font-weight: bold; color: #1E40AF; margin-bottom: 15px;">ACTUAL: {valor_actual}</div>
             """, unsafe_allow_html=True)
             
-            # Gráfica minimalista con Plotly
             fig = go.Figure()
             fig.add_trace(go.Scatter(
                 x=x_labels, y=y_vals, 
@@ -192,10 +208,10 @@ for i, (_, row) in enumerate(df_filtrado.iterrows()):
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
             st.markdown("</div>", unsafe_allow_html=True)
 
-# 7. Editor de Base de Datos (Oculto en un expander para mantener limpio el Dashboard)
+# 7. Editor de Base de Datos
 st.divider()
 with st.expander("⚙️ ACTUALIZAR BASE DE DATOS (Ingresar Límites y RFE)", expanded=False):
-    st.info("💡 Edita los valores aquí. Los cambios se reflejarán inmediatamente en las gráficas superiores.")
+    st.info("💡 Haz doble clic en cualquier celda para editar el valor. Puedes agregar nuevas filas al final de la tabla. Los cambios se reflejarán inmediatamente en los gráficos.")
     meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     
     col_config = {
@@ -206,7 +222,7 @@ with st.expander("⚙️ ACTUALIZAR BASE DE DATOS (Ingresar Límites y RFE)", ex
     edited_df = st.data_editor(
         st.session_state.df_agua, 
         column_config=col_config, 
-        num_rows="dynamic",
+        num_rows="dynamic",  # Esto permite agregar y borrar filas
         use_container_width=True,
         hide_index=True
     )
