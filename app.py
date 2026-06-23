@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 # 1. Configuración de la página
 st.set_page_config(page_title="Dashboard Sistema de Agua", layout="wide", initial_sidebar_state="expanded")
 
-# 2. Inyección de CSS personalizado para la interfaz limpia
+# 2. Inyección de CSS personalizado
 st.markdown("""
 <style>
     .stApp { background-color: #F8F9FA; }
@@ -21,12 +21,10 @@ st.markdown("""
     .kpi-subtitle { font-size: 0.85rem; color: #8B98A5; font-style: italic; }
     .blue-line { height: 4px; background-color: #1E40AF; width: 40px; border-radius: 2px; margin-top: 15px; }
     .status-dot { height: 12px; width: 12px; background-color: #10B981; border-radius: 50%; display: inline-block; margin-left: 10px; margin-bottom: 4px; }
-    [data-testid="stSidebar"] { background-color: white; }
-    .sidebar-title { font-size: 0.8rem; color: #8B98A5; font-weight: bold; padding-left: 10px; margin-top: 20px; margin-bottom: 10px;}
 </style>
 """, unsafe_allow_html=True)
 
-# 3. Base de Datos Inicial Precargada con Datos Históricos
+# 3. Base de Datos Inicial
 @st.cache_data
 def load_initial_data():
     datos_crudos = [
@@ -90,18 +88,9 @@ def load_initial_data():
         filas.append({
             "Área": area, 
             "Código": codigo,
-            "Alerta_2024": alerta[0], 
-            "Alerta_2025": alerta[1], 
-            "Alerta_2025_Dic": alerta[2], 
-            "Alerta_2026": alerta[3],
-            "Acción_2024": accion[0], 
-            "Acción_2025": accion[1], 
-            "Acción_2025_Dic": accion[2], 
-            "Acción_2026": accion[3],
-            "RFE_2024": rfe[0], 
-            "RFE_2025": rfe[1], 
-            "RFE_2025_Dic": rfe[2], 
-            "RFE_2026": rfe[3],
+            "Alerta_2024": alerta[0], "Alerta_2025": alerta[1], "Alerta_2025_Dic": alerta[2], "Alerta_2026": alerta[3],
+            "Acción_2024": accion[0], "Acción_2025": accion[1], "Acción_2025_Dic": accion[2], "Acción_2026": accion[3],
+            "RFE_2024": rfe[0], "RFE_2025": rfe[1], "RFE_2025_Dic": rfe[2], "RFE_2026": rfe[3],
             "Sin_Desviaciones": False
         })
     return pd.DataFrame(filas)
@@ -109,27 +98,24 @@ def load_initial_data():
 if 'df_agua' not in st.session_state:
     st.session_state.df_agua = load_initial_data()
 
-# 4. Navegación Lateral (Sidebar)
+# 4. Navegación Lateral (Sidebar) - RECONSTRUIDO CON SELECTBOXES CLAROS
 with st.sidebar:
-    st.markdown('<div class="sidebar-title">SECCIÓN</div>', unsafe_allow_html=True)
+    st.title("🎛️ Filtros Generales")
+    st.write("---")
+    
     areas_list = ["Cuarto de aguas", "Sólidos", "Líquidos", "Semisólidos", "Inyectables", "Externos a producción"]
-    areas_upper = [a.upper() for a in areas_list]
-    default_index = areas_upper.index("INYECTABLES") if "INYECTABLES" in areas_upper else 0
+    seccion_seleccionada = st.selectbox("1. SECCIÓN / ÁREA", areas_list, index=4) # Inyectables por defecto
     
-    seccion_seleccionada = st.radio("Sección", areas_upper, index=default_index, label_visibility="collapsed")
-    area_real = areas_list[areas_upper.index(seccion_seleccionada)]
+    codigos_area = st.session_state.df_agua[st.session_state.df_agua["Área"] == seccion_seleccionada]["Código"].tolist()
+    opciones_puntos = ["MOSTRAR TODOS"] + codigos_area
+    punto_seleccionado = st.selectbox("2. PUNTO DE USO", opciones_puntos)
     
-    st.markdown(f'<div class="sidebar-title">PUNTOS EN {seccion_seleccionada}</div>', unsafe_allow_html=True)
-    codigos_area = st.session_state.df_agua[st.session_state.df_agua["Área"] == area_real]["Código"].tolist()
-    opciones_puntos = ["ALL"] + codigos_area
-    punto_seleccionado = st.radio("Puntos", opciones_puntos, label_visibility="collapsed")
-    
-    st.markdown('<div class="sidebar-title">LÍMITE</div>', unsafe_allow_html=True)
-    metrica_activa = st.radio("Métrica", ["Alerta", "Acción", "RFE"], label_visibility="collapsed")
+    st.write("---")
+    metrica_activa = st.selectbox("3. LÍMITE A VISUALIZAR", ["Alerta", "Acción", "RFE"])
 
 # 5. Panel Principal - KPIs Superiores
 col1, col2, col3 = st.columns(3)
-cantidad_puntos = len(codigos_area) if punto_seleccionado == "ALL" else 1
+cantidad_puntos = len(codigos_area) if punto_seleccionado == "MOSTRAR TODOS" else 1
 
 with col1:
     st.markdown(f'''
@@ -160,8 +146,8 @@ with col3:
 st.write("") 
 
 # 6. Grid de Gráficas Individuales
-df_filtrado = st.session_state.df_agua[st.session_state.df_agua["Área"] == area_real]
-if punto_seleccionado != "ALL":
+df_filtrado = st.session_state.df_agua[st.session_state.df_agua["Área"] == seccion_seleccionada]
+if punto_seleccionado != "MOSTRAR TODOS":
     df_filtrado = df_filtrado[df_filtrado["Código"] == punto_seleccionado]
 
 cols_por_fila = 2
@@ -176,7 +162,6 @@ for i, (_, row) in enumerate(df_filtrado.iterrows()):
     if row["Sin_Desviaciones"]:
         y_vals = [0, 0, 0, 0]
     else:
-        # Se estructuró en varias líneas para evitar el error de sintaxis en GitHub
         y_vals = [
             row[f"{metrica_activa}_2024"], 
             row[f"{metrica_activa}_2025"], 
@@ -186,6 +171,11 @@ for i, (_, row) in enumerate(df_filtrado.iterrows()):
     
     valor_actual = y_vals[-1]
     
+    # Cálculo dinámico del margen inferior para que no se corte la gráfica
+    max_y = max(y_vals)
+    min_rango = -0.8 if max_y <= 5 else -max_y * 0.1
+    max_rango = 5 if max_y == 0 else max_y * 1.2
+
     with col:
         with st.container():
             st.markdown(f"""
@@ -194,7 +184,7 @@ for i, (_, row) in enumerate(df_filtrado.iterrows()):
                     <span style="font-size: 1.2rem; font-weight: bold; color: #1E293B;">{codigo}</span>
                     <span style="font-size: 0.7rem; font-weight: bold; color: #ADB5BD; cursor: pointer;">DETALLE</span>
                 </div>
-                <div style="font-size: 0.8rem; font-weight: bold; color: #1E40AF; margin-bottom: 15px;">ACTUAL: {valor_actual}</div>
+                <div style="font-size: 0.8rem; font-weight: bold; color: #1E40AF; margin-bottom: 5px;">ACTUAL: {valor_actual}</div>
             """, unsafe_allow_html=True)
             
             fig = go.Figure()
@@ -206,10 +196,10 @@ for i, (_, row) in enumerate(df_filtrado.iterrows()):
                 marker=dict(size=8, color='#1E40AF', symbol='circle')
             ))
             
-            # Categorías aseguradas para quitar los decimales en el eje X
             fig.update_layout(
-                height=200, 
-                margin=dict(l=0, r=0, t=10, b=0),
+                height=220, 
+                # Aumentamos el margen inferior (b=30) y superior (t=20) para dar espacio extra
+                margin=dict(l=10, r=10, t=20, b=30),
                 paper_bgcolor='rgba(0,0,0,0)', 
                 plot_bgcolor='rgba(0,0,0,0)',
                 xaxis=dict(
@@ -223,8 +213,10 @@ for i, (_, row) in enumerate(df_filtrado.iterrows()):
                     showgrid=True, 
                     gridcolor='#F1F5F9', 
                     showticklabels=False, 
-                    zeroline=False, 
-                    rangemode='tozero'
+                    zeroline=True, 
+                    zerolinecolor='#E2E8F0',
+                    zerolinewidth=1,
+                    range=[min_rango, max_rango] # Aplicamos el rango dinámico aquí
                 ),
                 hovermode="x unified"
             )
