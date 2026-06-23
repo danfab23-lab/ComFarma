@@ -13,10 +13,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 3. BASE DE DATOS COMPLETA (Transcrita de tu tabla)
+# 3. BASE DE DATOS COMPLETA
 @st.cache_data
 def load_initial_data():
-    # Estructura: (Área, Código, [Alerta 24, 25, 25Dic, 26], [Acción 24, 25, 25Dic, 26], [RFE 24, 25, 25Dic, 26])
     data = [
         ("Cuarto de aguas", "6S", [3,0,0,0], [1,0,0,0], [0,0,0,0]),
         ("Cuarto de aguas", "7SS", [4,0,0,0], [2,1,0,0], [0,0,0,0]),
@@ -81,7 +80,7 @@ def load_initial_data():
 
 if 'df_agua' not in st.session_state: st.session_state.df_agua = load_initial_data()
 
-# 4. Sidebar (Re-configurado para que no se pierda)
+# 4. Sidebar
 with st.sidebar:
     st.title("🎛️ Filtros")
     areas = st.session_state.df_agua["Área"].unique().tolist()
@@ -96,10 +95,6 @@ df = st.session_state.df_agua[st.session_state.df_agua["Área"] == seccion]
 if punto != "MOSTRAR TODOS": df = df[df["Código"] == punto]
 
 for _, row in df.iterrows():
-    y = [row[f"{metrica}_2024"], row[f"{metrica}_2025"], row[f"{metrica_2025_Dic"], row[f"{metrica}_2026"]]
+    y = [row[f"{metrica}_2024"], row[f"{metrica}_2025"], row[f"{metrica}_2025_Dic"], row[f"{metrica}_2026"]]
     fig = go.Figure(go.Scatter(x=["2024", "2025", "2025 (Dic)", "2026"], y=y, mode='lines+markers', line=dict(width=4)))
-    fig.update_layout(title=row['Código'], height=200, xaxis=dict(type='category'), yaxis=dict(range=[-0.5, max(y)+2]))
-    st.plotly_chart(fig, use_container_width=True)
-
-with st.expander("⚙️ Editar Datos"):
-    st.session_state.df_agua = st.data_editor(st.session_state.df_agua, use_container_width=True)
+    fig.update_layout(title=row['
