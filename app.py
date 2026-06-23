@@ -2,13 +2,19 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
-# 1. Configuración de la página
 st.set_page_config(page_title="Dashboard Sistema de Agua", layout="wide", initial_sidebar_state="expanded")
 
-# 2. Base de Datos Completa (Basada en tus imágenes)
+# --- CSS para asegurar que los filtros sean persistentes ---
+st.markdown("""
+<style>
+    .stApp { background-color: #F8F9FA; }
+    [data-testid="stSidebar"] { background-color: #FFFFFF; }
+</style>
+""", unsafe_allow_html=True)
+
 @st.cache_data
-def load_initial_data():
-    # Definición de la estructura de datos: (Área, Código, Alerta[24,25,25Dic,26], Acción[24,25,25Dic,26], RFE[24,25,25Dic,26])
+def load_data():
+    # Estructura consolidada de todos los datos de tus tablas
     data = [
         ("Cuarto de aguas", "6S", [3,0,0,0], [1,0,0,0], [0,0,0,0]),
         ("Cuarto de aguas", "7SS", [4,0,0,0], [2,1,0,0], [0,0,0,0]),
@@ -64,51 +70,50 @@ def load_initial_data():
         ("Externos a producción", "PU-30L", [0,0,0,0], [3,0,0,0], [0,0,0,0]),
         ("Externos a producción", "PU-36L", [0,1,0,0], [1,0,0,0], [0,0,0,0])
     ]
-    
     rows = []
     for a, c, al, ac, r in data:
-        rows.append({
-            "Área": a, "Código": c,
-            "Alerta_2024": al[0], "Alerta_2025": al[1], "Alerta_2025_Dic": al[2], "Alerta_2026": al[3],
-            "Acción_2024": ac[0], "Acción_2025": ac[1], "Acción_2025_Dic": ac[2], "Acción_2026": ac[3],
-            "RFE_2024": r[0], "RFE_2025": r[1], "RFE_2025_Dic": r[2], "RFE_2026": r[3]
-        })
+        rows.append({"Área":a, "Código":c, "Alerta_2024":al[0], "Alerta_2025":al[1], "Alerta_2025_Dic":al[2], "Alerta_2026":al[3],
+                     "Acción_2024":ac[0], "Acción_2025":ac[1], "Acción_2025_Dic":ac[2], "Acción_2026":ac[3],
+                     "RFE_2024":r[0], "RFE_2025":r[1], "RFE_2025_Dic":r[2], "RFE_2026":r[3]})
     return pd.DataFrame(rows)
 
-if 'df_agua' not in st.session_state: st.session_state.df_agua = load_initial_data()
+df = load_data()
 
-# 4. Sidebar (Filtros)
+# 4. Sidebar
 with st.sidebar:
     st.title("🎛️ Filtros")
-    areas = st.session_state.df_agua["Área"].unique().tolist()
+    areas = df["Área"].unique().tolist()
     seccion = st.selectbox("Área", areas)
-    
-    # Filtro de códigos dinámico
-    codigos_seccion = st.session_state.df_agua[st.session_state.df_agua["Área"] == seccion]["Código"].tolist()
-    punto = st.selectbox("Punto de Uso", ["MOSTRAR TODOS"] + codigos_seccion)
-    
+    codigos = ["MOSTRAR TODOS"] + df[df["Área"] == seccion]["Código"].tolist()
+    punto = st.selectbox("Punto de Uso", codigos)
     metrica = st.selectbox("Métrica", ["Alerta", "Acción", "RFE"])
 
 # 5. Panel Principal
-st.title(f"Dashboard: {seccion}")
-df = st.session_state.df_agua[st.session_state.df_agua["Área"] == seccion]
-if punto != "MOSTRAR TODOS": df = df[df["Código"] == punto]
+st.title(f"Vista: {seccion}")
+df_f = df[df["Área"] == seccion]
+if punto != "MOSTRAR TODOS": df_f = df_f[df_f["Código"] == punto]
 
-# 6. Renderizado de Gráficas
-for _, row in df.iterrows():
-    y = [row[f"{metrica}_2024"], row[f"{metrica}_2025"], row[f"{metrica}_2025_Dic"], row[f"{metrica}_2026"]]
+# 6. Gráficas Cuadradas con Animación
+for _, row in df_f.iterrows():
+    y_vals = [row[f"{metrica}_2024"], row[f"{metrica}_2025"], row[f"{metrica}_2025_Dic"], row[f"{metrica}_2026"]]
     
-    fig = go.Figure(go.Scatter(x=["2024", "2025", "2025 (Dic)", "2026"], y=y, mode='lines+markers', line=dict(width=4)))
+    fig = go.Figure(go.Scatter(
+        x=["2024", "2025", "2025 (Dic)", "2026"], 
+        y=y_vals, 
+        mode='lines+markers', 
+        line=dict(width=4)
+    ))
     
     fig.update_layout(
         title=f"Código: {row['Código']}", 
-        height=250, 
+        height=300,  # Altura ajustada para ser más cuadrada
+        width=400,   # Ancho definido para controlar la proporción
         xaxis=dict(type='category'), 
-        yaxis=dict(range=[-0.5, max(y)+2])
+        yaxis=dict(range=[-0.5, max(y_vals)+2]),
+        margin=dict(l=20, r=20, t=40, b=20)
     )
-    st.plotly_chart(fig, use_container_width=True)
+    # Animación: Plotly hace esto automáticamente al renderizar si se configura la transición
+    st.plotly_chart(fig, use_container_width=False)
 
-# 7. Editor de datos
-with st.expander("⚙️ Editar Base de Datos"):
-    st.info("💡 Edita los valores directamente en esta tabla. Los cambios se actualizarán al recargar.")
-    st.session_state.df_agua = st.data_editor(st.session_state.df_agua, use_container_width=True)
+with st.expander("⚙️ Editar Datos"):
+    st.data_editor(df, use_container_width=True)
