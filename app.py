@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
-st.set_page_config(page_title="Dashboard Planta", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Dashboard Planta", layout="wide")
 
-# CSS para animaciones
+# CSS para animación de desvanecimiento (Fade-in)
 st.markdown("""
 <style>
     .fade-in { animation: fadeInAnimation 0.8s ease-in-out; }
@@ -12,81 +12,81 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 1. BASE DE DATOS COMPLETA (Transcrita exactamente de tu imagen)
+# 1. CARGA Y PROCESAMIENTO AUTOMÁTICO
 @st.cache_data
-def load_full_data():
-    # [Área, Código Base, Subtipo, Alerta[24,25,25Dic,26], Acción[24,25,25Dic,26], RFE[24,25,25Dic,26]]
-    data = [
-        ("Cuarto de aguas", "6S", "Principal", [3,0,0,0], [1,0,0,0], [0,0,0,0]),
-        ("Cuarto de aguas", "SV-201", "CGA-N1", [3,0,0,0], [0,0,1,0], [0,0,0,0]),
-        ("Inyectables", "HV-207", "Normal", [5,3,0,1], [4,5,0,1], [1,0,2,1]),
-        ("Inyectables", "HV-207", "Válvula", [10,1,0,0], [13,2,0,0], [9,0,0,0]),
-        ("Inyectables", "HV-208", "Normal", [17,3,0,0], [10,1,0,1], [1,0,0,0]),
-        ("Inyectables", "HV-208", "Válvula", [6,0,0,0], [6,1,0,0], [4,0,0,0]),
-        ("Inyectables", "VP", "1 VP", [0,3,0,0], [3,0,0,0], [0,0,0,0]),
-        ("Inyectables", "VP", "2 VP", [5,4,0,0], [2,0,0,0], [0,0,0,0]),
-        ("Inyectables", "VP", "3 VP", [0,8,0,0], [1,2,0,0], [0,0,0,0]),
-        ("Inyectables", "VP", "4 VP", [2,7,0,0], [2,0,0,0], [1,0,0,0]),
-        ("Sólidos", "PU-17L", "Cto Granulación", [1,1,0,2], [8,1,1,0], [0,0,0,0]),
-        ("Sólidos", "PU-18L", "Área Técnica", [3,0,0,1], [0,0,0,0], [0,0,0,0]),
-        ("Líquidos", "PU-1L", "Cto Manuf", [3,0,0,0], [2,0,0,0], [0,0,0,0]),
-        ("Externos", "PU-13L", "Lab. Control", [2,0,0,1], [0,0,0,1], [0,0,0,0]),
-        ("Externos", "PU-27L", "Desarrollo", [0,0,0,0], [1,0,0,0], [0,0,0,0])
-    ]
-    rows = []
-    for a, c, s, al, ac, r in data:
-        rows.append({"Área":a, "Código":c, "Tipo":s, 
-                     "Alerta_24":al[0], "Alerta_25":al[1], "Alerta_25Dic":al[2], "Alerta_26":al[3],
-                     "Acción_24":ac[0], "Acción_25":ac[1], "Acción_25Dic":ac[2], "Acción_26":ac[3],
-                     "RFE_24":r[0], "RFE_25":r[1], "RFE_25Dic":r[2], "RFE_26":r[3]})
-    return pd.DataFrame(rows)
+def load_csv_data():
+    # Leemos el archivo CSV. 
+    # El header=1 es porque la primera fila es un encabezado general y la segunda los nombres técnicos.
+    df = pd.read_csv("datos.csv", header=1)
+    
+    # Mapeo de columnas fijas basándonos en la estructura de tu archivo
+    # Asumimos el orden que nos diste: Area, Código, Alerta(4), Acción(4), RFE(4)
+    cols = ["Area", "Codigo", "Alerta_24", "Alerta_25", "Alerta_25Dic", "Alerta_26", 
+            "C2", "Accion_24", "Accion_25", "Accion_25Dic", "Accion_26",
+            "RFE_24", "RFE_25", "RFE_25Dic", "RFE_26"]
+    df.columns = cols
+    
+    # Limpieza
+    df["Area"] = df["Area"].ffill() # Llenar áreas vacías
+    df["Codigo"] = df["Codigo"].str.replace("\n", " ").str.strip() # Limpiar saltos de línea
+    
+    # Crear "Base" para agrupar (tomamos el identificador principal)
+    # Por ejemplo: "HV-207-AI Muestreo normal" -> "HV-207-AI"
+    df["Base"] = df["Codigo"].apply(lambda x: str(x).split(" Muestreo")[0])
+    return df
 
-if 'df' not in st.session_state: st.session_state.df = load_full_data()
+try:
+    st.session_state.df = load_csv_data()
+except Exception as e:
+    st.error(f"Error al leer datos.csv: {e}")
+    st.stop()
 
 # 2. Sidebar
 with st.sidebar:
     st.title("🎛️ Filtros")
-    area = st.selectbox("Área", st.session_state.df["Área"].unique())
-    # Filtro para agrupar (ej. todos los HV-207 juntos)
-    codigos_base = ["TODOS"] + st.session_state.df[st.session_state.df["Área"]==area]["Código"].unique().tolist()
-    filtro_base = st.selectbox("Código Base", codigos_base)
-    metrica = st.selectbox("Métrica", ["Alerta", "Acción", "RFE"])
+    area = st.selectbox("Área", st.session_state.df["Area"].dropna().unique())
+    
+    # Filtro base
+    bases = ["TODOS"] + sorted(st.session_state.df[st.session_state.df["Area"]==area]["Base"].unique().tolist())
+    filtro_base = st.selectbox("Código Base", bases)
+    metrica = st.selectbox("Métrica", ["Alerta", "Accion", "RFE"])
 
-# 3. Panel Principal Animado
+# 3. Panel Principal con Animación
 st.markdown('<div class="fade-in">', unsafe_allow_html=True)
 st.title(f"Dashboard: {area}")
 
 # Filtrado
-df_f = st.session_state.df[st.session_state.df["Área"] == area]
-if filtro_base != "TODOS": df_f = df_f[df_f["Código"] == filtro_base]
+df_f = st.session_state.df[st.session_state.df["Area"] == area]
+if filtro_base != "TODOS": df_f = df_f[df_f["Base"] == filtro_base]
 
 # 4. Gráficas Agrupadas
-# Iteramos sobre los códigos bases únicos presentes en la vista
-codigos_en_vista = df_f["Código"].unique()
-
-for c in codigos_en_vista:
+# Agrupamos por la "Base" para que el Normal y la Válvula salgan juntos
+for base in df_f["Base"].unique():
     fig = go.Figure()
-    subset = df_f[df_f["Código"] == c]
+    subset = df_f[df_f["Base"] == base]
     
     for _, row in subset.iterrows():
+        # Construimos el array de datos dinámicamente
         y = [row[f"{metrica}_24"], row[f"{metrica}_25"], row[f"{metrica}_25Dic"], row[f"{metrica}_26"]]
+        
         fig.add_trace(go.Scatter(
             x=["2024", "2025", "2025 (Dic)", "2026"], y=y, 
-            mode='lines+markers', name=row['Tipo'], # Aquí aparece 'Normal' o 'Válvula' en la leyenda
-            line=dict(width=5, shape='spline', smoothing=1.3), marker=dict(size=12)
+            mode='lines+markers', name=str(row['Codigo']),
+            line=dict(width=5, shape='spline', smoothing=1.3), 
+            marker=dict(size=12)
         ))
     
     fig.update_layout(
-        title=f"Código: {c}", height=320, width=420,
-        xaxis=dict(type='category'), yaxis=dict(range=[-0.5, 20]),
-        margin=dict(l=20, r=20, t=50, b=20), template="plotly_white",
+        title=f"Código: {base}", height=320, width=450,
+        xaxis=dict(type='category'), template="plotly_white",
+        margin=dict(l=20, r=20, t=50, b=20),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
     st.plotly_chart(fig, use_container_width=False)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# 5. Edición y Guardado Seguro
-with st.expander("⚙️ Editar y Guardar Datos"):
+# 5. Edición y Guardado
+with st.expander("💾 Editar y Guardar"):
     st.session_state.df = st.data_editor(st.session_state.df, use_container_width=True)
-    st.download_button("💾 Guardar Cambios (CSV)", st.session_state.df.to_csv(index=False), "datos_planta.csv")
+    st.download_button("Descargar CSV Actualizado", st.session_state.df.to_csv(index=False), "datos_planta_v2.csv")
