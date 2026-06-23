@@ -2,12 +2,19 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
-st.set_page_config(page_title="Dashboard Sistema de Agua", layout="wide")
+# 1. Configuración de la página - sidebar expandido por defecto
+st.set_page_config(page_title="Dashboard Sistema de Agua", layout="wide", initial_sidebar_state="expanded")
 
-# (Se mantienen los estilos CSS igual que antes...)
-st.markdown("""<style>.stApp { background-color: #F8F9FA; } header {visibility: hidden;}</style>""", unsafe_allow_html=True)
+# 2. CSS para asegurar que los filtros sean visibles
+st.markdown("""
+<style>
+    .stApp { background-color: #F8F9FA; }
+    [data-testid="stSidebar"] { background-color: #FFFFFF; border-right: 1px solid #E9ECEF; }
+    .sidebar-title { font-size: 0.85rem; color: #1E40AF; font-weight: 800; margin-top: 20px; margin-bottom: 10px; text-transform: uppercase; }
+</style>
+""", unsafe_allow_html=True)
 
-# 3. Base de Datos (Misma estructura)
+# 3. Base de Datos (igual a la versión anterior que funcionaba)
 @st.cache_data
 def load_initial_data():
     datos_crudos = [
@@ -24,31 +31,35 @@ def load_initial_data():
 
 if 'df_agua' not in st.session_state: st.session_state.df_agua = load_initial_data()
 
-# 4. FILTROS EN EL CUERPO PRINCIPAL (En lugar del Sidebar)
-st.title("📊 Dashboard de Control - Sistema de Agua")
-col_f1, col_f2, col_f3 = st.columns(3)
-
-with col_f1:
+# 4. MENÚ LATERAL (SIDEBAR) - SIEMPRE VISIBLE
+with st.sidebar:
+    st.title("🎛️ Panel de Control")
+    st.write("Selecciona los filtros para actualizar las vistas.")
+    
     areas_list = ["Cuarto de aguas", "Sólidos", "Líquidos", "Semisólidos", "Inyectables", "Externos a producción"]
-    seccion_seleccionada = st.selectbox("1. SECCIÓN", areas_list, index=4)
-with col_f2:
+    seccion_seleccionada = st.selectbox("Área", areas_list, index=4)
+    
     codigos_area = st.session_state.df_agua[st.session_state.df_agua["Área"] == seccion_seleccionada]["Código"].tolist()
-    punto_seleccionado = st.selectbox("2. PUNTO DE USO", ["MOSTRAR TODOS"] + codigos_area)
-with col_f3:
-    metrica_activa = st.selectbox("3. LÍMITE", ["Alerta", "Acción", "RFE"])
+    punto_seleccionado = st.selectbox("Punto de Uso", ["MOSTRAR TODOS"] + codigos_area)
+    
+    metrica_activa = st.selectbox("Límite a analizar", ["Alerta", "Acción", "RFE"])
 
-st.write("---")
-
-# 5. Gráficas (Lógica igual, pero ahora se filtran según los selectores de arriba)
+# 5. Panel Principal
+st.title(f"Vista: {seccion_seleccionada}")
 df_filtrado = st.session_state.df_agua[st.session_state.df_agua["Área"] == seccion_seleccionada]
 if punto_seleccionado != "MOSTRAR TODOS":
     df_filtrado = df_filtrado[df_filtrado["Código"] == punto_seleccionado]
 
+# Gráficas
 x_labels = ["2024", "2025", "2025 (Dic)", "2026"]
 for _, row in df_filtrado.iterrows():
     y_vals = [row[f"{metrica_activa}_2024"], row[f"{metrica_activa}_2025"], row[f"{metrica_activa}_2025_Dic"], row[f"{metrica_activa}_2026"]]
     
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=x_labels, y=y_vals, mode='lines+markers', line=dict(shape='spline', width=4)))
-    fig.update_layout(height=200, margin=dict(l=10, r=10, t=10, b=10), xaxis=dict(type='category'), yaxis=dict(range=[-1, max(y_vals)+2]))
+    fig.update_layout(title=row['Código'], height=200, margin=dict(l=10, r=10, t=30, b=10), xaxis=dict(type='category'), yaxis=dict(range=[-0.5, max(y_vals)+2]))
     st.plotly_chart(fig, use_container_width=True)
+
+# 6. Editor
+with st.expander("⚙️ Editar Base de Datos"):
+    st.session_state.df_agua = st.data_editor(st.session_state.df_agua, use_container_width=True)
