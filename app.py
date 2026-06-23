@@ -57,9 +57,9 @@ if 'df_agua' not in st.session_state:
 meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre", "Sin Actualizar"]
 
 st.subheader("1. Base de Datos Interactiva (Editor Directo)")
-st.info("💡 Puedes editar los valores directamente en la tabla. 
+st.info("""💡 Puedes editar los valores directamente en la tabla. 
 - Ajusta el mes de revisión para 2026.
-- Si marcas la casilla 'Sin_Desviaciones', el gráfico automáticamente tomará un valor de 0 incidentes para todos los límites.")
+- Si marcas la casilla 'Sin_Desviaciones', el gráfico automáticamente tomará un valor de 0 incidentes para todos los límites.""")
 
 col_config = {
     "Mes_Revision_2026": st.column_config.SelectboxColumn("Mes Rev. 2026", options=meses, required=True),
