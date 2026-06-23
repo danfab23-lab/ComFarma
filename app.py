@@ -2,13 +2,46 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
-# Configuración inicial de la página
-st.set_page_config(page_title="Monitoreo Sistema de Agua", layout="wide")
+# 1. Configuración de la página (Debe ser la primera línea)
+st.set_page_config(page_title="Dashboard Sistema de Agua", layout="wide", initial_sidebar_state="expanded")
 
-st.title("📊 Análisis Histórico: Sistema de Agua")
-st.markdown("Plataforma interactiva para evaluar tendencias de Límites de Alerta, Acción y RFE. Permite comparar datos históricos y documentar revisiones del año en curso de manera ágil.")
+# 2. Inyección de CSS personalizado para igualar el diseño de la imagen
+st.markdown("""
+<style>
+    /* Fondo general más claro */
+    .stApp { background-color: #F8F9FA; }
+    
+    /* Ocultar barra superior por defecto de Streamlit para más limpieza */
+    header {visibility: hidden;}
+    
+    /* Estilo de las tarjetas KPI (Métricas superiores) */
+    .kpi-card {
+        background-color: white;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        text-align: center;
+        height: 100%;
+        border: 1px solid #E9ECEF;
+    }
+    .kpi-title { font-size: 0.85rem; color: #8B98A5; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+    .kpi-value { font-size: 2.8rem; color: #1E40AF; font-weight: 800; margin: 10px 0; line-height: 1; }
+    .kpi-value-text { font-size: 1.8rem; color: #343A40; font-weight: 700; margin: 10px 0; line-height: 1.2; }
+    .kpi-subtitle { font-size: 0.85rem; color: #8B98A5; font-style: italic; }
+    
+    /* Línea azul decorativa en la primera tarjeta */
+    .blue-line { height: 4px; background-color: #1E40AF; width: 40px; border-radius: 2px; margin-top: 15px; }
+    
+    /* Punto verde de estado operativo */
+    .status-dot { height: 12px; width: 12px; background-color: #10B981; border-radius: 50%; display: inline-block; margin-left: 10px; margin-bottom: 4px; }
+    
+    /* Ajustes del menú lateral */
+    [data-testid="stSidebar"] { background-color: white; }
+    .sidebar-title { font-size: 0.8rem; color: #8B98A5; font-weight: bold; padding-left: 10px; margin-top: 20px; margin-bottom: 10px;}
+</style>
+""", unsafe_allow_html=True)
 
-# Pre-carga de puntos de uso basada en la tabla original
+# 3. Base de Datos Inicial
 @st.cache_data
 def load_initial_data():
     puntos = [
@@ -27,8 +60,8 @@ def load_initial_data():
         {"No.": 25, "Tipo": "Agua Purificada", "Punto de Uso": "Área Técnica de granulación", "Código": "PU-18L", "Área": "Sólidos"},
         {"No.": 26, "Tipo": "Agua Purificada", "Punto de Uso": "Cuarto de granulación", "Código": "PU-19L", "Área": "Sólidos"},
         {"No.": 27, "Tipo": "Agua Purificada", "Punto de Uso": "Cuarto de lavado sólidos", "Código": "PU-20L", "Área": "Sólidos"},
-        {"No.": 41, "Tipo": "Agua Inyectables", "Punto de Uso": "CGA-N1-01, salida termocompresor", "Código": "SV-201", "Área": "Cuarto de aguas"},
-        {"No.": 43, "Tipo": "Agua Inyectables", "Punto de Uso": "CGA-N1-01, salida intercambiador", "Código": "SV-203", "Área": "Cuarto de aguas"},
+        {"No.": 41, "Tipo": "Agua Inyectables", "Punto de Uso": "CGA-N1-01, salida termocompresor", "Código": "SV-201", "Área": "Inyectables"},
+        {"No.": 43, "Tipo": "Agua Inyectables", "Punto de Uso": "CGA-N1-01, salida intercambiador", "Código": "SV-203", "Área": "Inyectables"},
         {"No.": 44, "Tipo": "Agua Inyectables", "Punto de Uso": "Lavado y despirogenizado", "Código": "SV-204", "Área": "Inyectables"},
         {"No.": 46, "Tipo": "Agua Inyectables", "Punto de Uso": "Lavado de material Planta baja", "Código": "HV-207-AI", "Área": "Inyectables"},
         {"No.": 48, "Tipo": "Agua Inyectables", "Punto de Uso": "Preparación de soluciones", "Código": "HV-208-AI", "Área": "Inyectables"},
@@ -38,103 +71,143 @@ def load_initial_data():
         {"No.": 55, "Tipo": "Vapor puro", "Punto de Uso": "Autoclave Shinva", "Código": "4 VP", "Área": "Inyectables"}
     ]
     df = pd.DataFrame(puntos)
-    
     metricas = ["Alerta", "Acción", "RFE"]
     años = ["2024", "2025", "2025_Dic", "2026"]
-    
     for m in metricas:
         for a in años:
             df[f"{m}_{a}"] = 0
-            
     df["Mes_Revision_2026"] = "Enero"
     df["Sin_Desviaciones"] = False
     return df
 
-# Mantener los datos en la sesión
 if 'df_agua' not in st.session_state:
     st.session_state.df_agua = load_initial_data()
 
-meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre", "Sin Actualizar"]
+# 4. Navegación Lateral (Sidebar)
+with st.sidebar:
+    st.markdown('<div class="sidebar-title">SECCIÓN</div>', unsafe_allow_html=True)
+    areas_list = sorted(st.session_state.df_agua["Área"].dropna().unique().tolist())
+    areas_upper = [a.upper() for a in areas_list]
+    # Forzamos que "INYECTABLES" sea una opción destacada si existe
+    default_index = areas_upper.index("INYECTABLES") if "INYECTABLES" in areas_upper else 0
+    
+    seccion_seleccionada = st.radio("Sección", areas_upper, index=default_index, label_visibility="collapsed")
+    area_real = areas_list[areas_upper.index(seccion_seleccionada)]
+    
+    st.markdown(f'<div class="sidebar-title">PUNTOS EN {seccion_seleccionada}</div>', unsafe_allow_html=True)
+    codigos_area = st.session_state.df_agua[st.session_state.df_agua["Área"] == area_real]["Código"].tolist()
+    opciones_puntos = ["ALL"] + codigos_area
+    punto_seleccionado = st.radio("Puntos", opciones_puntos, label_visibility="collapsed")
+    
+    st.markdown('<div class="sidebar-title">LÍMITE</div>', unsafe_allow_html=True)
+    metrica_activa = st.radio("Métrica", ["Alerta", "Acción", "RFE"], label_visibility="collapsed")
 
-st.subheader("1. Base de Datos Interactiva (Editor Directo)")
-st.info("""💡 Puedes editar los valores directamente en la tabla. 
-- Ajusta el mes de revisión para 2026.
-- Si marcas la casilla 'Sin_Desviaciones', el gráfico automáticamente tomará un valor de 0 incidentes para todos los límites.""")
+# 5. Panel Principal - KPIs Superiores
+col1, col2, col3 = st.columns(3)
 
-col_config = {
-    "Mes_Revision_2026": st.column_config.SelectboxColumn("Mes Rev. 2026", options=meses, required=True),
-    "Sin_Desviaciones": st.column_config.CheckboxColumn("Sin Desviaciones (0 Alertas/Acciones/RFE)")
-}
+cantidad_puntos = len(codigos_area) if punto_seleccionado == "ALL" else 1
 
-# Editor de datos incrustado en la interfaz
-edited_df = st.data_editor(
-    st.session_state.df_agua, 
-    column_config=col_config, 
-    num_rows="dynamic",
-    use_container_width=True,
-    hide_index=True
-)
-st.session_state.df_agua = edited_df
-
-st.divider()
-st.subheader("2. Gráficos de Tendencia Dinámicos")
-
-# Selectores para navegación de áreas y puntos
-col1, col2 = st.columns(2)
 with col1:
-    areas = ["Todas"] + sorted(edited_df["Área"].dropna().unique().tolist())
-    selected_area = st.selectbox("1. Filtrar por Área:", areas)
+    st.markdown(f'''
+        <div class="kpi-card">
+            <div class="kpi-title">PUNTOS EN SECCIÓN</div>
+            <div class="kpi-value">{cantidad_puntos}</div>
+            <div class="blue-line"></div>
+        </div>
+    ''', unsafe_allow_html=True)
 
 with col2:
-    if selected_area != "Todas":
-        codigos = edited_df[edited_df["Área"] == selected_area]["Código"].dropna().unique().tolist()
+    st.markdown(f'''
+        <div class="kpi-card">
+            <div class="kpi-title">MÉTRICA ACTIVA</div>
+            <div class="kpi-value">{metrica_activa.upper()}</div>
+            <div class="kpi-subtitle">Visualizando límites de {metrica_activa.lower()}</div>
+        </div>
+    ''', unsafe_allow_html=True)
+
+with col3:
+    st.markdown('''
+        <div class="kpi-card">
+            <div class="kpi-title">ESTADO GENERAL</div>
+            <div class="kpi-value-text">Sistema<br>Operativo <span class="status-dot"></span></div>
+        </div>
+    ''', unsafe_allow_html=True)
+
+st.write("") # Espaciador
+
+# 6. Grid de Gráficas Individuales
+df_filtrado = st.session_state.df_agua[st.session_state.df_agua["Área"] == area_real]
+if punto_seleccionado != "ALL":
+    df_filtrado = df_filtrado[df_filtrado["Código"] == punto_seleccionado]
+
+# Creamos columnas para el grid (2 gráficas por fila)
+cols_por_fila = 2
+filas = [st.columns(cols_por_fila) for _ in range((len(df_filtrado) + cols_por_fila - 1) // cols_por_fila)]
+
+for i, (_, row) in enumerate(df_filtrado.iterrows()):
+    col = filas[i // cols_por_fila][i % cols_por_fila]
+    
+    # Extraer datos
+    codigo = row["Código"]
+    mes = row["Mes_Revision_2026"]
+    x_labels = ["2024", "2025", "2025(Dic)", f"2026({mes[:3]})"]
+    
+    if row["Sin_Desviaciones"]:
+        y_vals = [0, 0, 0, 0]
     else:
-        codigos = edited_df["Código"].dropna().unique().tolist()
-        
-    selected_code = st.selectbox("2. Seleccionar Código (Punto de Uso):", codigos)
+        y_vals = [row[f"{metrica_activa}_2024"], row[f"{metrica_activa}_2025"], row[f"{metrica_activa}_2025_Dic"], row[f"{metrica_activa}_2026"]]
+    
+    valor_actual = y_vals[-1]
+    
+    with col:
+        # Contenedor estilo tarjeta para la gráfica
+        with st.container():
+            st.markdown(f"""
+            <div style="background-color: white; border-radius: 15px; padding: 20px; border: 1px solid #E9ECEF; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <span style="font-size: 1.2rem; font-weight: bold; color: #1E293B;">{codigo}</span>
+                    <span style="font-size: 0.7rem; font-weight: bold; color: #ADB5BD; cursor: pointer;">DETALLE</span>
+                </div>
+                <div style="font-size: 0.8rem; font-weight: bold; color: #1E40AF; margin-bottom: 15px;">NORMAL: {valor_actual}</div>
+            """, unsafe_allow_html=True)
+            
+            # Gráfica minimalista con Plotly
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=x_labels, y=y_vals, 
+                mode='lines+markers', 
+                line=dict(shape='spline', color='#1E40AF', width=4), 
+                marker=dict(size=8, color='#1E40AF', symbol='circle')
+            ))
+            
+            fig.update_layout(
+                height=200, 
+                margin=dict(l=0, r=0, t=10, b=0),
+                paper_bgcolor='rgba(0,0,0,0)', 
+                plot_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(showgrid=True, gridcolor='#F1F5F9', showticklabels=False, zeroline=False),
+                yaxis=dict(showgrid=True, gridcolor='#F1F5F9', showticklabels=False, zeroline=False, rangemode='tozero'),
+                hovermode="x unified"
+            )
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+            st.markdown("</div>", unsafe_allow_html=True)
 
-plot_data = edited_df[edited_df["Código"] == selected_code]
-
-if not plot_data.empty:
-    plot_data = plot_data.iloc[0]
-    st.markdown(f"**Punto de Uso:** {plot_data['Punto de Uso']} | **Área:** {plot_data['Área']} | **Tipo de Agua:** {plot_data['Tipo']}")
+# 7. Editor de Base de Datos (Oculto en un expander para mantener limpio el Dashboard)
+st.divider()
+with st.expander("⚙️ ACTUALIZAR BASE DE DATOS (Ingresar Límites y RFE)", expanded=False):
+    st.info("💡 Edita los valores aquí. Los cambios se reflejarán inmediatamente en las gráficas superiores.")
+    meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     
-    mes_2026 = plot_data["Mes_Revision_2026"]
-    x_labels = ["2024", "2025", "2025 (Dic)", f"2026 ({mes_2026})"]
+    col_config = {
+        "Mes_Revision_2026": st.column_config.SelectboxColumn("Mes Rev. 2026", options=meses, required=True),
+        "Sin_Desviaciones": st.column_config.CheckboxColumn("Sin Desviaciones (0 en todo)")
+    }
     
-    # Comprobación de checkbox de desviaciones
-    if plot_data["Sin_Desviaciones"]:
-        y_alerta = [0, 0, 0, 0]
-        y_accion = [0, 0, 0, 0]
-        y_rfe = [0, 0, 0, 0]
-        st.success("✅ Este punto está marcado sin desviaciones (0 incidentes registrados en todos los rubros).")
-    else:
-        y_alerta = [plot_data["Alerta_2024"], plot_data["Alerta_2025"], plot_data["Alerta_2025_Dic"], plot_data["Alerta_2026"]]
-        y_accion = [plot_data["Acción_2024"], plot_data["Acción_2025"], plot_data["Acción_2025_Dic"], plot_data["Acción_2026"]]
-        y_rfe = [plot_data["RFE_2024"], plot_data["RFE_2025"], plot_data["RFE_2025_Dic"], plot_data["RFE_2026"]]
-
-    fig = go.Figure()
-    
-    # Gráfico tipo PowerBI con curvas suaves
-    fig.add_trace(go.Scatter(x=x_labels, y=y_alerta, mode='lines+markers', name='Límite Alerta', 
-                             line=dict(shape='spline', color='#1E90FF', width=3), marker=dict(size=8)))
-    fig.add_trace(go.Scatter(x=x_labels, y=y_accion, mode='lines+markers', name='Límite Acción', 
-                             line=dict(shape='spline', color='#FF8C00', width=3), marker=dict(size=8)))
-    fig.add_trace(go.Scatter(x=x_labels, y=y_rfe, mode='lines+markers', name='RFE', 
-                             line=dict(shape='spline', color='#DC143C', width=3), marker=dict(size=8)))
-    
-    fig.update_layout(
-        title=f"Tendencia de Eventos - Código: {selected_code}",
-        xaxis_title="Periodo Evaluado",
-        yaxis_title="Cantidad de Eventos Registrados",
-        plot_bgcolor='white',
-        hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    edited_df = st.data_editor(
+        st.session_state.df_agua, 
+        column_config=col_config, 
+        num_rows="dynamic",
+        use_container_width=True,
+        hide_index=True
     )
-    
-    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGray', rangemode="tozero", zeroline=True, zerolinewidth=2, zerolinecolor='LightGray')
-    
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.warning("No hay datos disponibles para la selección actual.")
+    st.session_state.df_agua = edited_df
