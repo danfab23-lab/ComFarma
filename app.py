@@ -26,7 +26,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 3. Base de Datos Inicial Precargada con Datos Históricos (Actualizada)
+# 3. Base de Datos Inicial Precargada con Datos Históricos
 @st.cache_data
 def load_initial_data():
     # Estructura: (Area, Codigo, [Alerta 24, 25, 25Dic, 26], [Accion 24, 25, 25Dic, 26], [RFE 24, 25, 25Dic, 26])
@@ -99,7 +99,7 @@ def load_initial_data():
             "Alerta_2024": alerta[0], "Alerta_2025": alerta[1], "Alerta_2025_Dic": alerta[2], "Alerta_2026": alerta[3],
             "Acción_2024": accion[0], "Acción_2025": accion[1], "Acción_2025_Dic": accion[2], "Acción_2026": accion[3],
             "RFE_2024": rfe[0], "RFE_2025": rfe[1], "RFE_2025_Dic": rfe[2], "RFE_2026": rfe[3],
-            "Mes_Revision_2026": "Enero", "Sin_Desviaciones": False
+            "Sin_Desviaciones": False
         })
     return pd.DataFrame(filas)
 
@@ -164,11 +164,12 @@ if punto_seleccionado != "ALL":
 cols_por_fila = 2
 filas = [st.columns(cols_por_fila) for _ in range((len(df_filtrado) + cols_por_fila - 1) // cols_por_fila)]
 
+# ETIQUETAS DEL EJE X FIJAS PARA MOSTRAR EXACTAMENTE LOS 4 PERIODOS
+x_labels = ["2024", "2025", "2025 (Dic)", "2026"]
+
 for i, (_, row) in enumerate(df_filtrado.iterrows()):
     col = filas[i // cols_por_fila][i % cols_por_fila]
     codigo = row["Código"]
-    mes = row["Mes_Revision_2026"]
-    x_labels = ["2024", "2025", "2025(Dic)", f"2026({mes[:3]})"]
     
     if row["Sin_Desviaciones"]:
         y_vals = [0, 0, 0, 0]
@@ -182,48 +183,4 @@ for i, (_, row) in enumerate(df_filtrado.iterrows()):
             st.markdown(f"""
             <div style="background-color: white; border-radius: 15px; padding: 20px; border: 1px solid #E9ECEF; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                    <span style="font-size: 1.2rem; font-weight: bold; color: #1E293B;">{codigo}</span>
-                    <span style="font-size: 0.7rem; font-weight: bold; color: #ADB5BD; cursor: pointer;">DETALLE</span>
-                </div>
-                <div style="font-size: 0.8rem; font-weight: bold; color: #1E40AF; margin-bottom: 15px;">ACTUAL: {valor_actual}</div>
-            """, unsafe_allow_html=True)
-            
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=x_labels, y=y_vals, 
-                mode='lines+markers', 
-                line=dict(shape='spline', color='#1E40AF', width=4), 
-                marker=dict(size=8, color='#1E40AF', symbol='circle')
-            ))
-            
-            fig.update_layout(
-                height=200, 
-                margin=dict(l=0, r=0, t=10, b=0),
-                paper_bgcolor='rgba(0,0,0,0)', 
-                plot_bgcolor='rgba(0,0,0,0)',
-                xaxis=dict(showgrid=True, gridcolor='#F1F5F9', showticklabels=False, zeroline=False),
-                yaxis=dict(showgrid=True, gridcolor='#F1F5F9', showticklabels=False, zeroline=False, rangemode='tozero'),
-                hovermode="x unified"
-            )
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-            st.markdown("</div>", unsafe_allow_html=True)
-
-# 7. Editor de Base de Datos
-st.divider()
-with st.expander("⚙️ ACTUALIZAR BASE DE DATOS (Ingresar Límites y RFE)", expanded=False):
-    st.info("💡 Haz doble clic en cualquier celda para editar el valor. Puedes agregar nuevas filas al final de la tabla. Los cambios se reflejarán inmediatamente en los gráficos.")
-    meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-    
-    col_config = {
-        "Mes_Revision_2026": st.column_config.SelectboxColumn("Mes Rev. 2026", options=meses, required=True),
-        "Sin_Desviaciones": st.column_config.CheckboxColumn("Sin Desviaciones (0 en todo)")
-    }
-    
-    edited_df = st.data_editor(
-        st.session_state.df_agua, 
-        column_config=col_config, 
-        num_rows="dynamic",  # Esto permite agregar y borrar filas
-        use_container_width=True,
-        hide_index=True
-    )
-    st.session_state.df_agua = edited_df
+                    <span style="font-size: 1.2rem; font-weight: bold; color: #1E293B;">{
