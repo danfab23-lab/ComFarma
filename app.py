@@ -30,7 +30,6 @@ st.markdown("""
 @st.cache_data
 def load_initial_data():
     datos_crudos = [
-        # Cuarto de aguas
         ("Cuarto de aguas", "6S", [3,0,0,0], [1,0,0,0], [0,0,0,0]),
         ("Cuarto de aguas", "7SS", [4,0,0,0], [2,1,0,0], [0,0,0,0]),
         ("Cuarto de aguas", "SV-201", [3,0,0,0], [0,0,1,0], [0,0,0,0]),
@@ -38,7 +37,6 @@ def load_initial_data():
         ("Cuarto de aguas", "SV-203", [16,0,0,0], [4,0,0,0], [1,0,0,0]),
         ("Cuarto de aguas", "SV-205", [16,1,0,0], [9,0,0,0], [0,0,0,0]),
         ("Cuarto de aguas", "HV-210", [16,5,0,0], [10,5,0,1], [3,1,0,0]),
-        # Sólidos
         ("Sólidos", "PU-17L", [1,1,0,0], [3,1,0,0], [0,0,0,0]),
         ("Sólidos", "PU-18L", [1,0,0,0], [1,0,0,0], [0,0,0,0]),
         ("Sólidos", "PU-19L", [6,0,0,0], [2,1,0,0], [0,0,0,0]),
@@ -49,14 +47,12 @@ def load_initial_data():
         ("Sólidos", "PU-25L", [3,0,0,1], [0,0,0,0], [0,0,0,0]),
         ("Sólidos", "PU-26L", [1,1,0,0], [2,0,0,0], [0,0,0,0]),
         ("Sólidos", "PU-28L", [3,2,0,0], [2,3,0,0], [0,0,0,0]),
-        # Líquidos
         ("Líquidos", "PU-1L", [3,0,0,0], [2,0,0,0], [0,0,0,0]),
         ("Líquidos", "PU-2L", [4,1,0,0], [4,0,0,0], [0,0,0,0]),
         ("Líquidos", "PU-3L", [5,0,0,1], [2,0,1,0], [0,0,0,0]),
         ("Líquidos", "PU-22L", [3,4,0,1], [10,2,0,0], [0,0,0,0]),
         ("Líquidos", "PU-34L", [1,2,0,0], [1,1,1,0], [0,0,0,0]),
         ("Líquidos", "PU-35L", [0,0,0,0], [1,0,0,0], [0,0,0,0]),
-        # Semisólidos
         ("Semisólidos", "PU-4L", [7,10,0,1], [8,6,0,2], [0,1,0,1]),
         ("Semisólidos", "PU-5L", [5,2,0,3], [2,0,0,0], [0,0,0,1]),
         ("Semisólidos", "PU-6L", [2,0,0,0], [0,0,0,0], [0,0,0,0]),
@@ -65,7 +61,6 @@ def load_initial_data():
         ("Semisólidos", "PU-9L", [11,2,0,0], [3,0,0,0], [0,0,0,0]),
         ("Semisólidos", "PU-10L", [6,2,0,1], [5,2,1,0], [0,0,0,0]),
         ("Semisólidos", "PU-33L", [5,0,0,1], [2,4,2,0], [0,2,0,1]),
-        # Inyectables
         ("Inyectables", "SV-204", [4,0,0,0], [2,0,0,0], [0,0,0,0]),
         ("Inyectables", "HV-207-AI M. Normal", [5,3,0,1], [4,5,0,1], [1,0,2,1]),
         ("Inyectables", "HV-207-AI M. Valvula", [0,0,0,0], [0,0,0,0], [0,0,0,0]),
@@ -79,7 +74,6 @@ def load_initial_data():
         ("Inyectables", "2 VP", [5,4,0,0], [2,0,0,0], [0,0,0,0]),
         ("Inyectables", "3 VP", [0,8,0,0], [1,2,0,0], [0,0,0,0]),
         ("Inyectables", "4 VP", [2,7,0,0], [2,0,0,0], [1,0,0,0]),
-        # Externos a producción
         ("Externos a producción", "PU-27L", [0,0,0,0], [1,0,0,0], [0,0,0,0]),
         ("Externos a producción", "PU-13L", [2,0,0,1], [0,0,0,1], [0,0,0,0]),
         ("Externos a producción", "PU-14L", [0,4,0,0], [3,0,0,0], [0,0,0,0]),
@@ -94,10 +88,20 @@ def load_initial_data():
     filas = []
     for area, codigo, alerta, accion, rfe in datos_crudos:
         filas.append({
-            "Área": area, "Código": codigo,
-            "Alerta_2024": alerta[0], "Alerta_2025": alerta[1], "Alerta_2025_Dic": alerta[2], "Alerta_2026": alerta[3],
-            "Acción_2024": accion[0], "Acción_2025": accion[1], "Acción_2025_Dic": accion[2], "Acción_2026": accion[3],
-            "RFE_2024": rfe[0], "RFE_2025": rfe[1], "RFE_2025_Dic": rfe[2], "RFE_2026": rfe[3],
+            "Área": area, 
+            "Código": codigo,
+            "Alerta_2024": alerta[0], 
+            "Alerta_2025": alerta[1], 
+            "Alerta_2025_Dic": alerta[2], 
+            "Alerta_2026": alerta[3],
+            "Acción_2024": accion[0], 
+            "Acción_2025": accion[1], 
+            "Acción_2025_Dic": accion[2], 
+            "Acción_2026": accion[3],
+            "RFE_2024": rfe[0], 
+            "RFE_2025": rfe[1], 
+            "RFE_2025_Dic": rfe[2], 
+            "RFE_2026": rfe[3],
             "Sin_Desviaciones": False
         })
     return pd.DataFrame(filas)
@@ -172,4 +176,78 @@ for i, (_, row) in enumerate(df_filtrado.iterrows()):
     if row["Sin_Desviaciones"]:
         y_vals = [0, 0, 0, 0]
     else:
-        y_vals =
+        # Se estructuró en varias líneas para evitar el error de sintaxis en GitHub
+        y_vals = [
+            row[f"{metrica_activa}_2024"], 
+            row[f"{metrica_activa}_2025"], 
+            row[f"{metrica_activa}_2025_Dic"], 
+            row[f"{metrica_activa}_2026"]
+        ]
+    
+    valor_actual = y_vals[-1]
+    
+    with col:
+        with st.container():
+            st.markdown(f"""
+            <div style="background-color: white; border-radius: 15px; padding: 20px; border: 1px solid #E9ECEF; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <span style="font-size: 1.2rem; font-weight: bold; color: #1E293B;">{codigo}</span>
+                    <span style="font-size: 0.7rem; font-weight: bold; color: #ADB5BD; cursor: pointer;">DETALLE</span>
+                </div>
+                <div style="font-size: 0.8rem; font-weight: bold; color: #1E40AF; margin-bottom: 15px;">ACTUAL: {valor_actual}</div>
+            """, unsafe_allow_html=True)
+            
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=x_labels, 
+                y=y_vals, 
+                mode='lines+markers', 
+                line=dict(shape='spline', color='#1E40AF', width=4), 
+                marker=dict(size=8, color='#1E40AF', symbol='circle')
+            ))
+            
+            # Categorías aseguradas para quitar los decimales en el eje X
+            fig.update_layout(
+                height=200, 
+                margin=dict(l=0, r=0, t=10, b=0),
+                paper_bgcolor='rgba(0,0,0,0)', 
+                plot_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(
+                    type='category', 
+                    showgrid=True, 
+                    gridcolor='#F1F5F9', 
+                    showticklabels=True, 
+                    zeroline=False
+                ), 
+                yaxis=dict(
+                    showgrid=True, 
+                    gridcolor='#F1F5F9', 
+                    showticklabels=False, 
+                    zeroline=False, 
+                    rangemode='tozero'
+                ),
+                hovermode="x unified"
+            )
+            
+            clave_unica = f"grafica_{codigo}_{metrica_activa}_{i}"
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False}, key=clave_unica)
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+
+# 7. Editor de Base de Datos
+st.divider()
+with st.expander("⚙️ ACTUALIZAR BASE DE DATOS (Ingresar Límites y RFE)", expanded=False):
+    st.info("💡 Haz doble clic en cualquier celda para editar el valor. Los cambios se reflejarán inmediatamente en los gráficos.")
+    
+    col_config = {
+        "Sin_Desviaciones": st.column_config.CheckboxColumn("Sin Desviaciones (0 en todo)")
+    }
+    
+    edited_df = st.data_editor(
+        st.session_state.df_agua, 
+        column_config=col_config, 
+        num_rows="dynamic",
+        use_container_width=True,
+        hide_index=True
+    )
+    st.session_state.df_agua = edited_df
